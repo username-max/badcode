@@ -3,53 +3,53 @@ package ru.liga.intership.badcode.service;
 
 import ru.liga.intership.badcode.domain.Person;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
 public class PersonService {
-
+    private List<Person> adultPersons;
+    private double totalIMT = 0.0;
+    private long countOfPerson = 0;
+    private ResultSet sqlResult;
 
     /**
      * Возвращает средний индекс массы тела всех лиц мужского пола старше 18 лет
-     *
-     * @return
      */
-    public void getAdultMaleUsersAverageBMI() {
-        double totalImt = 0.0;
-        long countOfPerson = 0;
-        try {
 
-            Connection conn = DriverManager.getConnection("jdbc:hsqldb:mem:test", "sa", "");
-            Statement statement = conn.createStatement();
-            ResultSet rs = statement.executeQuery("SELECT * FROM person WHERE sex = 'male' AND age > 18");
-            List<Person> adultPersons = new ArrayList<>();
-            while (rs.next()) {
-                Person p = new Person();
-                //Retrieve by column name
-                p.setId(rs.getLong("id"));
-                p.setSex(rs.getString("sex"));
-                p.setName(rs.getString("name"));
-                p.setAge(rs.getLong("age"));
-                p.setWeight(rs.getLong("weight"));
-                p.setHeight(rs.getLong("height"));
-                adultPersons.add(p);
-            }
+    public void getAdultMaleUsersAverageBMI(String url, String userName, String password, String sql) throws SQLException {
+        sqlResult = SqlQuery.getResult(url, userName, password, sql);
+        adultPersons = addPerson(sqlResult);
+        countOfPerson = adultPersons.size();
+        countingTotalIMT();
+        averageBodyMassIndex();
+    }
 
-            for (Person p : adultPersons) {
-                double heightInMeters = p.getHeight() / 100d;
-                double imt = p.getWeight() / (Double) (heightInMeters * heightInMeters);
-                totalImt += imt;
-            }
-            countOfPerson = adultPersons.size();
-
-        } catch (Exception e) {
-            e.printStackTrace();
+    private List<Person> addPerson(ResultSet sqlResult) throws SQLException {
+        List<Person> adultPersons = new ArrayList<>();
+        while (sqlResult.next()) {
+            Person p = new Person(
+                    sqlResult.getLong("id"),
+                    sqlResult.getString("sex"),
+                    sqlResult.getString("name"),
+                    sqlResult.getLong("age"),
+                    sqlResult.getLong("weight"),
+                    sqlResult.getLong("height"));
+            adultPersons.add(p);
         }
-        System.out.println("Average imt - " + totalImt / countOfPerson);
+        return adultPersons;
+    }
+
+    private void countingTotalIMT() {
+        for (Person person : adultPersons) {
+            double heightInMeters = person.getHeight() / 100d;
+            double imt = person.getWeight() / (Double) (heightInMeters * heightInMeters);
+            totalIMT += imt;
+        }
+    }
+
+    private void averageBodyMassIndex() {
+        System.out.println("Average imt - " + totalIMT / countOfPerson);
     }
 
 }
